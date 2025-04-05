@@ -6,4 +6,4 @@ phases:
       java: latest
   build:
     commands:
-      - mvn verify sonar:sonar -Dsonar.projectKey=java-project-aws1 -Dsonar.organization=kepler-security -Dsonar.host.url=https://sonarcloud.io -Dsonar.token=fcd5cfcb3d4ad91d039f019c2a3831017ca03762
+      - mvn verify sonar:sonar -Dsonar.projectKey=java-project-aws1 -Dsonar.organization=java-project-aws1 -Dsonar.host.url=https://sonarcloud.io -Dsonar.token=fcd5cfcb3d4ad91d039f019c2a3831017ca03762
