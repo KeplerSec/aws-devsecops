@@ -4,11 +4,6 @@ phases:
   install:
     runtime-versions:
       java: latest
-
   build:
     commands:
-      - mvn verify sonar:sonar \
-          -Dsonar.projectKey=java-project-aws1 \
-          -Dsonar.organization=kepler-security \
-          -Dsonar.host.url=https://sonarcloud.io \
-          -Dsonar.token=555810169d0fd064103e9e218f02cd0b042ad852
+      - mvn verify sonar:sonar -Dsonar.projectKey=java-project-aws1 -Dsonar.organization=kepler-security -Dsonar.host.url=https://sonarcloud.io -Dsonar.token=555810169d0fd064103e9e218f02cd0b042ad852
