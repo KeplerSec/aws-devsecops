@@ -1,4 +1,7 @@
 version: 0.2
+env: 
+  secret-manager:
+      TOKEN: firstSecret:tokenForSonar
 
 phases:
   install:
