@@ -1,13 +1,21 @@
 version: 0.2
 env: 
   secrets-manager:
-      TOKEN: firstSecret:tokenForSonar
-      TOKEN_SNYK: tokenForSnyk:tokenSnyk
+    TOKEN: firstSecret:tokenForSonar
+    TOKEN_SNYK: tokenForSnyk:tokenSnyk
 
 phases:
   install:
     runtime-versions:
       java: latest
+      nodejs: latest
+    commands:
+      - echo "Installation de Node.js et Snyk"
+      - node -v 
+      - npm -v  
+      - npm install -g snyk  
+      - snyk --version  
+      - apt-get update && apt-get install -y jq 
   build:
     commands:
       - mvn verify sonar:sonar -Dsonar.projectKey=java-project-aws1 -Dsonar.organization=java-project-aws1 -Dsonar.host.url=https://sonarcloud.io -Dsonar.token=$TOKEN
@@ -16,5 +24,6 @@ phases:
         quality_status=$(curl -s -u $TOKEN: https://sonarcloud.io/api/qualitygates/project_status?projectKey=java-project-aws1 | jq -r '.projectStatus.status')
         echo "SonarCloud analysistatus is $quality_status"; 
         if [ $quality_status = "ERROR" ] ; then exit 1;fi
+      - echo "Authentification Snyk"
       - snyk auth $TOKEN_SNYK 
       - snyk test --file=pom.xml
