@@ -1,28 +1,46 @@
 version: 0.2
+
 env: 
   secrets-manager:
     TOKEN: firstSecret:tokenForSonar
     TOKEN_SNYK: tokenForSnyk:tokenSnyk
+
 phases:
   install:
     runtime-versions:
       java: latest
       nodejs: latest
     commands:
-      - echo "Installation de Node.js et Snyk"
+      - echo "Installation de Node.js, Snyk et dépendances"
       - node -v
       - npm -v
       - npm install -g snyk
       - snyk --version
-      - yum update -y && yum install -y jq
+      - yum update -y && yum install -y jq wget java-17-amazon-corretto-devel
+
   build:
     commands:
+      - echo "Analyse SonarCloud"
       - mvn verify sonar:sonar -Dsonar.projectKey=java-project-aws1 -Dsonar.organization=java-project-aws1 -Dsonar.host.url=https://sonarcloud.io -Dsonar.token=$TOKEN
       - sleep 5
-      - |- 
+      - |
         quality_status=$(curl -s -u $TOKEN: https://sonarcloud.io/api/qualitygates/project_status?projectKey=java-project-aws1 | jq -r '.projectStatus.status')
-        echo "SonarCloud analysistatus is $quality_status"; 
-        if [ $quality_status = "ERROR" ] ; then exit 1;fi
+        echo "SonarCloud analysistatus is $quality_status"
+        if [ "$quality_status" = "ERROR" ]; then exit 1; fi
+      
       - echo "Authentification Snyk"
       - snyk auth $TOKEN_SNYK 
-      - snyk test --file=pom.xml || true  # Force le succès même avec des vulnérabilités
+      - snyk test --file=pom.xml --json > snyk-report.json || true
+      - cat snyk-report.json
+
+      - echo "Téléchargement et exécution de ZAP"
+      - |
+        wget https://github.com/zaproxy/zaproxy/releases/download/v2.16.0/ZAP_2.16.0_Linux.tar.gz
+        tar -xvf ZAP_2.16.0_Linux.tar.gz
+        cd ZAP_2.16.0
+        ./zap.sh -cmd -quickurl https://www.example.com -quickprogress -quickout ../zap_report.html || true
+
+artifacts:
+  files:
+    - zap_report.html
+    - snyk-report.json
