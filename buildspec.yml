@@ -1,53 +1,51 @@
 version: 0.2
 
-env:
+env: 
   secrets-manager:
     TOKEN: firstSecret:tokenForSonar
+    TOKEN_SNYK: tokenForSnyk:tokenSnyk
 
 phases:
   install:
     runtime-versions:
       java: latest
+      nodejs: latest
     commands:
-      - echo "Mise à jour des paquets et installation des outils nécessaires"
-      - yum update -y && yum install -y jq wget
+      - echo "Installation de Node.js, Snyk et dépendances"
+      - node -v
+      - npm -v
+      - npm install -g snyk
+      - snyk --version
+      - yum update -y && yum install -y jq wget java-17-amazon-corretto-devel
 
   build:
     commands:
-
-      # Static Application Security Testing (SAST) - SonarCloud
-      - echo "Analyse statique avec SonarCloud"
-      - mvn verify sonar:sonar -Dsonar.projectKey=javaprojectaws -Dsonar.organization=javaprojectaws -Dsonar.host.url=https://sonarcloud.io -Dsonar.token=$TOKEN
-
-      # Vérification de la quality gate SonarCloud
-      - echo "Vérification de la quality gate SonarCloud"
+      - echo "Analyse SonarCloud"
+      - mvn verify sonar:sonar -Dsonar.projectKey=java-project-aws1 -Dsonar.organization=java-project-aws1 -Dsonar.host.url=https://sonarcloud.io -Dsonar.token=$TOKEN
       - sleep 5
       - |
-        quality_status=$(curl -s -u $TOKEN: https://sonarcloud.io/api/qualitygates/project_status?projectKey=javaprojectaws | jq -r '.projectStatus.status')
-        echo "Statut de la quality gate : $quality_status"
-        if [ "$quality_status" = "ERROR" ]; then
-          echo "La quality gate a échoué. Build échoué."
+        echo "Vérification du Quality Gate SonarCloud"
+        quality_status=$(curl -s -u $TOKEN: https://sonarcloud.io/api/qualitygates/project_status?projectKey=java-project-aws1 | jq -r '.projectStatus.status')
+        echo "Statut du Quality Gate : $quality_status"
+        if [ "$quality_status" = "ERROR" ]; then 
+          echo "Quality Gate échoué. Arrêt de la build."
           exit 1
         fi
+      
+      - echo "Authentification Snyk"
+      - snyk auth $TOKEN_SNYK 
+      - echo "Analyse Snyk (SCA)"
+      - snyk test --file=pom.xml --json > snyk-report.json || true
+      - cat snyk-report.json
 
-      # Software Composition Analysis (SCA) - Snyk
-      - echo "Analyse SCA avec Snyk"
-      - curl -sL https://deb.nodesource.com/setup_18.x | bash -
-      - yum install -y nodejs
-      - npm install -g snyk
-      - snyk --version
-      - snyk auth 2f4afa39-c493-4c6d-b34e-080c1a8f9014
-      - snyk test --file=pom.xml --json > snyk_report.json || true
-
-      # Dynamic Application Security Testing (DAST) - OWASP ZAP
-      - echo "Analyse dynamique avec OWASP ZAP"
-      - wget https://github.com/zaproxy/zaproxy/releases/download/v2.16.0/ZAP_2.16.0_Linux.tar.gz
-      - tar -xvf ZAP_2.16.0_Linux.tar.gz
-      - cd ZAP_2.16.0
-      - ./zap.sh -cmd -quickurl https://www.example.com -quickprogress -quickout ../zap_report.html || true
-      - cd ..
+      - echo "Téléchargement et exécution de ZAP (DAST)"
+      - |
+        wget https://github.com/zaproxy/zaproxy/releases/download/v2.16.0/ZAP_2.16.0_Linux.tar.gz
+        tar -xvf ZAP_2.16.0_Linux.tar.gz
+        cd ZAP_2.16.0
+        ./zap.sh -cmd -quickurl https://www.example.com -quickprogress -quickout ../zap_report.html || true
 
 artifacts:
   files:
     - zap_report.html
-    - snyk_report.json
+    - snyk-report.json
